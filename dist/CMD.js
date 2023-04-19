@@ -38,7 +38,18 @@ const ProcessUtil_1 = __importDefault(require("./utils/ProcessUtil"));
         return;
     }
     const customDataArg = ProcessUtil_1.default.getArg('--data', value => value && !value.startsWith('--'));
-    const handler = new (robotType.toLocaleLowerCase() === 'wechat' ? WechatHandler_1.default : FeishuHandler_1.default)(robotKey, taskName, projectDir, customDataArg);
+    var handler;
+    switch (robotType.toLocaleLowerCase()) {
+        case 'wechat':
+            handler = new WechatHandler_1.default(robotKey, taskName, projectDir, customDataArg);
+            break;
+        case 'feishu':
+            const headerColor = ProcessUtil_1.default.getArg('--header', value => value && !value.startsWith('--'));
+            handler = new FeishuHandler_1.default(robotKey, taskName, projectDir, headerColor, customDataArg);
+            break;
+        default:
+            process.exit(1);
+    }
     if (ProcessUtil_1.default.haveArg('--begin'))
         yield handler.begin();
     else if (ProcessUtil_1.default.haveArg('--end'))

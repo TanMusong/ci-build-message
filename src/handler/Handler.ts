@@ -7,6 +7,7 @@ import GitLogUtil from '../utils/GitLogUtil';
 
 export const BUILD_HISTROY_LIMIT = 20;
 export type BuildInfo = { logs: { name: string; title: string; }[], time: number }
+export type CustomData = (string | { key: string; value: string; });
 
 type StartBuildMark = { version?: string, timestamp?: number }
 
@@ -63,8 +64,8 @@ export default abstract class Handler {
         return { logs, time };
     }
 
-    protected getCustomData(): (string | { key: string, value: string })[] {
-        const customData: (string | { key: string, value: string })[] = [];
+    protected getCustomData(): CustomData[] {
+        const customData:CustomData[] = [];
         if (!this.data) return customData;
         const customDataArray = this.data.split(';');
         if (!customDataArray) return customData;

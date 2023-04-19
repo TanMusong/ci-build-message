@@ -1,4 +1,7 @@
 # CI Build Message
+[![Node.js Package](https://github.com/TanMusong/ci-build-message/actions/workflows/npm-publish-github-packages.yml/badge.svg)](https://github.com/TanMusong/ci-build-message/actions/workflows/npm-publish-github-packages.yml)
+[![NPM version](https://img.shields.io/npm/v/ci-build-message.svg)](https://www.npmjs.com/package/ci-build-message)
+
 
 ### Requirements
 

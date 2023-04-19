@@ -38,8 +38,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const RobotFeishu_1 = __importDefault(require("../robot/RobotFeishu"));
 const ProcessUtil_1 = __importDefault(require("../utils/ProcessUtil"));
 const Handler_1 = __importStar(require("./Handler"));
-const HEAD_TEMPLATE = ['blue', 'wathet', 'turquoise', 'green', 'yellow', 'orange', 'red', 'carmine', 'violet', 'purple', 'indigo', 'grey'];
+const HEADER_TEMPLATE = ['grey', 'blue', 'wathet', 'turquoise', 'green', 'yellow', 'orange', 'red', 'carmine', 'violet', 'purple', 'indigo'];
 class FeishuHandler extends Handler_1.default {
+    constructor(robotKey, taskName, projectDir, headerColor, data) {
+        super(robotKey, taskName, projectDir, data);
+        this.headerColor = headerColor && HEADER_TEMPLATE.includes(headerColor) ? headerColor : HEADER_TEMPLATE[0];
+    }
     gitHistroyToMD(logs) {
         let logString = '';
         for (let index = 0, length = Math.min(logs.length, Handler_1.BUILD_HISTROY_LIMIT); index < length; index++) {
@@ -56,55 +60,65 @@ class FeishuHandler extends Handler_1.default {
         }
         return logString;
     }
+    customDataToElements(customData) {
+        const elements = [];
+        let fields = [];
+        customData.forEach((item, index) => {
+            if (typeof item === 'string') {
+                switch (true) {
+                    case item === 'hr' || item === 'line':
+                        //分块，创建新的fields，忽略结尾分割线
+                        if (index < customData.length - 1) {
+                            elements.push({ tag: 'div', fields });
+                            elements.push({ tag: 'hr' });
+                            fields = [];
+                        }
+                        break;
+                    case item.startsWith('[short]'):
+                        fields.push({ is_short: true, text: { tag: 'lark_md', content: item } });
+                        break;
+                    default:
+                        fields.push({ is_short: false, text: { tag: 'lark_md', content: item } });
+                        break;
+                }
+            }
+            else {
+                const content = `${item.key}: **${item.value}**`;
+                fields.push({ is_short: true, text: { tag: 'lark_md', content } });
+            }
+        });
+        elements.push({ tag: 'div', fields });
+        return elements;
+    }
     onExceBegin() {
         return __awaiter(this, void 0, void 0, function* () {
             const customData = this.getCustomData();
-            if (customData && customData.length) {
-                const data = {
-                    config: { wide_screen_mode: true },
-                    header: {
-                        title: { tag: 'plain_text', content: `${this.taskName} 开始构建` },
-                        template: 'grey'
-                    },
-                    elements: []
-                };
-                const fields = [];
-                customData.forEach(item => {
-                    if (typeof item === 'string')
-                        fields.push({ is_short: false, text: { tag: 'lark_md', content: item } });
-                    else
-                        fields.push({ is_short: true, text: { tag: 'lark_md', content: `${item.key}: **${item.value}**` } });
-                });
-                data.elements.push({ tag: 'div', fields });
-                RobotFeishu_1.default.send(this.robotKey, 'interactive', data);
-            }
-            else {
+            if (!customData || !customData.length) {
                 RobotFeishu_1.default.send(this.robotKey, 'text', { text: `${this.taskName} 开始构建` });
+                return;
             }
+            const data = {
+                config: { wide_screen_mode: true },
+                header: {
+                    title: { tag: 'plain_text', content: `${this.taskName} 开始构建` },
+                    template: this.headerColor
+                },
+                elements: this.customDataToElements(customData)
+            };
+            RobotFeishu_1.default.send(this.robotKey, 'interactive', data);
         });
     }
     onExceEnd(buildInfo) {
         return __awaiter(this, void 0, void 0, function* () {
+            const customData = this.getCustomData();
             const data = {
                 config: { wide_screen_mode: true },
                 header: {
                     title: { tag: 'plain_text', content: `${this.taskName} 构建完成` },
-                    template: 'grey'
+                    template: this.headerColor
                 },
-                elements: []
+                elements: this.customDataToElements(customData)
             };
-            const customData = this.getCustomData();
-            if (customData && customData.length) {
-                data.elements.length && data.elements.push({ tag: 'hr' });
-                const fields = [];
-                customData.forEach(item => {
-                    if (typeof item === 'string')
-                        fields.push({ is_short: false, text: { tag: 'lark_md', content: item } });
-                    else
-                        fields.push({ is_short: true, text: { tag: 'lark_md', content: `${item.key}: **${item.value}**` } });
-                });
-                data.elements.push({ tag: 'div', fields });
-            }
             if (buildInfo && buildInfo.logs && buildInfo.logs.length) {
                 data.elements.length && data.elements.push({ tag: 'hr' });
                 const gitHistroyString = this.gitHistroyToMD(buildInfo.logs);
@@ -123,40 +137,6 @@ class FeishuHandler extends Handler_1.default {
             RobotFeishu_1.default.send(this.robotKey, 'interactive', data);
         });
     }
-    beforeExceSleep(continueUrl) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const data = {
-                config: { wide_screen_mode: true },
-                header: {
-                    title: { tag: 'plain_text', content: `${this.taskName} 构建暂停` },
-                    template: 'grey'
-                },
-                elements: []
-            };
-            const customData = this.getCustomData();
-            if (customData && customData.length) {
-                data.elements.length && data.elements.push({ tag: 'hr' });
-                const fields = [];
-                customData.forEach(item => {
-                    if (typeof item === 'string')
-                        fields.push({ is_short: false, text: { tag: 'lark_md', content: item } });
-                    else
-                        fields.push({ is_short: true, text: { tag: 'lark_md', content: `${item.key}: **${item.value}**` } });
-                });
-                data.elements.push({ tag: 'div', fields });
-            }
-            data.elements.push({
-                tag: 'div', text: { tag: 'lark_md', content: '' },
-                extra: { tag: 'button', text: { tag: 'lark_md', content: '继续构建' }, type: 'primary', url: continueUrl }
-            });
-            RobotFeishu_1.default.send(this.robotKey, 'interactive', data);
-        });
-    }
-    afterExceSleep() {
-        return __awaiter(this, void 0, void 0, function* () {
-            yield RobotFeishu_1.default.send(this.robotKey, 'text', { text: `${this.taskName} 构建恢复` });
-        });
-    }
     timeFormat(time) {
         let ms = time;
         let s = Math.floor(time / 1000);
@@ -165,9 +145,9 @@ class FeishuHandler extends Handler_1.default {
         ms -= s * 1000;
         const min = Math.floor(s / 60);
         if (min <= 0)
-            return `${s}秒 ${ms}毫秒`;
+            return `${s}秒`;
         s -= min * 60;
-        return `${min}分 ${s}秒 ${ms}毫秒`;
+        return `${min}分 ${s}秒`;
     }
 }
 exports.default = FeishuHandler;

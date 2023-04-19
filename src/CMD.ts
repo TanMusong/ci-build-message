@@ -32,7 +32,19 @@ import ProcessUtil from './utils/ProcessUtil';
 
     const customDataArg = ProcessUtil.getArg('--data', value => value && !value.startsWith('--'));
 
-    const handler: Handler = new (robotType.toLocaleLowerCase() === 'wechat' ? WechatHandler : FeishuHandler)(robotKey, taskName, projectDir, customDataArg);
+    var handler: Handler;
+    switch (robotType.toLocaleLowerCase()) {
+        case 'wechat':
+            handler = new WechatHandler(robotKey, taskName, projectDir, customDataArg);
+            break;
+        case 'feishu':
+            const headerColor = ProcessUtil.getArg('--header', value => value && !value.startsWith('--'));
+            handler = new FeishuHandler(robotKey, taskName, projectDir, headerColor, customDataArg);
+            break;
+        default:
+            process.exit(1);
+    }
+
 
     if (ProcessUtil.haveArg('--begin')) await handler.begin();
     else if (ProcessUtil.haveArg('--end')) await handler.end();
