@@ -45,7 +45,8 @@ const ProcessUtil_1 = __importDefault(require("./utils/ProcessUtil"));
             break;
         case 'feishu':
             const headerColor = ProcessUtil_1.default.getArg('--header', value => value && !value.startsWith('--'));
-            handler = new FeishuHandler_1.default(robotKey, taskName, projectDir, headerColor, customDataArg);
+            const urlLabel = ProcessUtil_1.default.getArg('--url-label', value => value && !value.startsWith('--'));
+            handler = new FeishuHandler_1.default(robotKey, taskName, projectDir, headerColor, urlLabel, customDataArg);
             break;
         default:
             process.exit(1);

@@ -40,9 +40,10 @@ const ProcessUtil_1 = __importDefault(require("../utils/ProcessUtil"));
 const Handler_1 = __importStar(require("./Handler"));
 const HEADER_TEMPLATE = ['grey', 'blue', 'wathet', 'turquoise', 'green', 'yellow', 'orange', 'red', 'carmine', 'violet', 'purple', 'indigo'];
 class FeishuHandler extends Handler_1.default {
-    constructor(robotKey, taskName, projectDir, headerColor, data) {
+    constructor(robotKey, taskName, projectDir, headerColor, urlLabel, data) {
         super(robotKey, taskName, projectDir, data);
         this.headerColor = headerColor && HEADER_TEMPLATE.includes(headerColor) ? headerColor : HEADER_TEMPLATE[0];
+        this.urlLabel = urlLabel || '查看/下载';
     }
     gitHistroyToMD(logs) {
         let logString = '';
@@ -128,7 +129,7 @@ class FeishuHandler extends Handler_1.default {
             if (url) {
                 data.elements.push({
                     tag: 'div', text: { tag: 'lark_md', content: '' },
-                    extra: { tag: 'button', text: { tag: 'lark_md', content: '查看/下载' }, type: 'primary', url }
+                    extra: { tag: 'button', text: { tag: 'lark_md', content: this.urlLabel }, type: 'primary', url }
                 });
             }
             if (buildInfo) {
