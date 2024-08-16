@@ -65,7 +65,7 @@ export default abstract class Handler {
     }
 
     protected getCustomData(): CustomData[] {
-        const customData:CustomData[] = [];
+        const customData: CustomData[] = [];
         if (!this.data) return customData;
         const customDataArray = this.data.split(';');
         if (!customDataArray) return customData;

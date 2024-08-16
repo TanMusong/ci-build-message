@@ -8,10 +8,12 @@ const HEADER_TEMPLATE = ['grey', 'blue', 'wathet', 'turquoise', 'green', 'yellow
 export default class FeishuHandler extends Handler {
 
     private readonly headerColor: string;
+    private readonly urlLabel: string;
 
-    constructor(robotKey: string, taskName: string, projectDir: string, headerColor?: string, data?: string) {
+    constructor(robotKey: string, taskName: string, projectDir: string, headerColor?: string, urlLabel?: string, data?: string) {
         super(robotKey, taskName, projectDir, data);
         this.headerColor = headerColor && HEADER_TEMPLATE.includes(headerColor) ? headerColor : HEADER_TEMPLATE[0];
+        this.urlLabel = urlLabel || '查看/下载';
     }
 
     private gitHistroyToMD(logs: { name: string; title: string; }[]): string {
@@ -98,7 +100,7 @@ export default class FeishuHandler extends Handler {
         if (url) {
             data.elements.push({
                 tag: 'div', text: { tag: 'lark_md', content: '' },
-                extra: { tag: 'button', text: { tag: 'lark_md', content: '查看/下载' }, type: 'primary', url }
+                extra: { tag: 'button', text: { tag: 'lark_md', content: this.urlLabel }, type: 'primary', url }
             })
         }
 
