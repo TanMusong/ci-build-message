@@ -51,6 +51,9 @@ var GitLogUtil;
             if (!data || data.length !== 3)
                 return;
             const [name, title, id] = data;
+            const nameCheckText = name.toLocaleLowerCase();
+            if (nameCheckText.includes('jenkins') || nameCheckText.includes('teamcity'))
+                return;
             messageArray.push({ name, title });
         });
         return messageArray;
