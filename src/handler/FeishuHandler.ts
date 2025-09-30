@@ -55,16 +55,16 @@ export default class FeishuHandler extends Handler {
                 case 'blocks':
                     return this.blockToElements(item.data);
                 case 'markdown':
-                    data.elements.push({ tag: 'markdown', content: item.data });
+                    elements.push({ tag: 'markdown', content: item.data });
                     break;
                 case 'button':
-                    data.elements.push({
+                    elements.push({
                         tag: 'div', text: { tag: 'lark_md', content: '' },
                         extra: { tag: 'button', text: { tag: 'lark_md', content: item.data.label }, type: 'primary', url: item.data.url }
                     })
                     break;
                 case 'note':
-                    data.elements.push({
+                    elements.push({
                         tag: 'note',
                         elements: [{ tag: 'plain_text', content: item.data }]
                     });
