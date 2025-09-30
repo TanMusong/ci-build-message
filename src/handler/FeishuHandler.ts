@@ -1,37 +1,21 @@
 import RobotFeishu from "../robot/RobotFeishu";
+import ProcessUtil from "../utils/ProcessUtil";
 import ProcessUtils from "../utils/ProcessUtil";
-import Handler, { BuildInfo, BUILD_HISTROY_LIMIT, CustomData } from "./Handler";
+import Handler, { Block } from "./Handler";
 
 
 const HEADER_TEMPLATE = ['grey', 'blue', 'wathet', 'turquoise', 'green', 'yellow', 'orange', 'red', 'carmine', 'violet', 'purple', 'indigo'];
 
 export default class FeishuHandler extends Handler {
 
-    private readonly headerColor: string;
-    private readonly urlLabel: string;
 
-    constructor(robotKey: string, taskName: string, projectDir: string, headerColor?: string, urlLabel?: string, data?: string) {
-        super(robotKey, taskName, projectDir, data);
-        this.headerColor = headerColor && HEADER_TEMPLATE.includes(headerColor) ? headerColor : HEADER_TEMPLATE[0];
-        this.urlLabel = urlLabel || '查看/下载';
+    constructor(robotKey: string) {
+        super(robotKey);
+
+
     }
 
-    private gitHistroyToMD(logs: { name: string; title: string; }[]): string {
-        let logString: string = '';
-        for (let index = 0, length = Math.min(logs.length, BUILD_HISTROY_LIMIT); index < length; index++) {
-            const { name, title } = logs[index];
-            if (index !== 0) logString += '\n';
-            const fixTitle = title.replace(new RegExp('\\#', 'gm'), '\\#').replace(new RegExp('\\*', 'gm'), '\\*');;
-            logString += `**${name}** - ${fixTitle}`;
-        }
-        if (logs.length > BUILD_HISTROY_LIMIT) {
-            logString += '\n'
-            logString += `......`
-        }
-        return logString;
-    }
-
-    private customDataToElements(customData: CustomData[]): any[] {
+    private blockToElements(customData: Block[]): any[] {
         const elements: any[] = []
         let fields: any[] = [];
         customData.forEach((item, index) => {
@@ -62,66 +46,46 @@ export default class FeishuHandler extends Handler {
         return elements;
     }
 
-    public async onExceBegin(): Promise<void> {
-        const customData = this.getCustomData();
-        if (!customData || !customData.length) {
-            RobotFeishu.send(this.robotKey, 'text', { text: `${this.taskName} 开始构建` })
-            return;
-        }
+
+    public async onExce(): Promise<void> {
+        const content = this.getContent();
+        const elements: any[] = []
+        content.forEach((item, index) => {
+            switch (item.type) {
+                case 'blocks':
+                    return this.blockToElements(item.data);
+                case 'markdown':
+                    data.elements.push({ tag: 'markdown', content: item.data });
+                    break;
+                case 'button':
+                    data.elements.push({
+                        tag: 'div', text: { tag: 'lark_md', content: '' },
+                        extra: { tag: 'button', text: { tag: 'lark_md', content: item.data.label }, type: 'primary', url: item.data.url }
+                    })
+                    break;
+                case 'note':
+                    data.elements.push({
+                        tag: 'note',
+                        elements: [{ tag: 'plain_text', content: item.data }]
+                    });
+                    break;
+            }
+        });
+
+        const color = this.getColor();
+        const headerColor = color && HEADER_TEMPLATE.includes(color) ? color : HEADER_TEMPLATE[0];
         const data: any = {
             config: { wide_screen_mode: true },
             header: {
-                title: { tag: 'plain_text', content: `${this.taskName} 开始构建` },
-                template: this.headerColor
+                title: { tag: 'plain_text', content: this.getTitle() },
+                template: headerColor
             },
-            elements: this.customDataToElements(customData)
+            elements
         }
 
-        RobotFeishu.send(this.robotKey, 'interactive', data);
-    }
-
-    public async onExceEnd(buildInfo: BuildInfo): Promise<void> {
-        const customData = this.getCustomData();
-        const data: any = {
-            config: { wide_screen_mode: true },
-            header: {
-                title: { tag: 'plain_text', content: `${this.taskName} 构建完成` },
-                template: this.headerColor
-            },
-            elements: this.customDataToElements(customData)
-        }
-        if (buildInfo && buildInfo.logs && buildInfo.logs.length) {
-            data.elements.length && data.elements.push({ tag: 'hr' });
-            const gitHistroyString = this.gitHistroyToMD(buildInfo.logs)
-            data.elements.push({ tag: 'markdown', content: gitHistroyString });
-        }
-
-        const url = ProcessUtils.getArg('--url', value => value && value.startsWith('http'));
-        if (url) {
-            data.elements.push({
-                tag: 'div', text: { tag: 'lark_md', content: '' },
-                extra: { tag: 'button', text: { tag: 'lark_md', content: this.urlLabel }, type: 'primary', url }
-            })
-        }
-
-        if (buildInfo) {
-            data.elements.push({ tag: 'note', elements: [{ tag: 'plain_text', content: `构建耗时: ${this.timeFormat(buildInfo.time)}` }] });
-        }
-        RobotFeishu.send(this.robotKey, 'interactive', data);
+        await RobotFeishu.send(this.robotKey, 'interactive', data);
     }
 
 
-    private timeFormat(time: number): string {
-        let ms = time;
 
-        let s = Math.floor(time / 1000)
-        if (s <= 0) return `${ms}毫秒`;
-        ms -= s * 1000;
-
-        const min = Math.floor(s / 60);
-        if (min <= 0) return `${s}秒`;
-        s -= min * 60;
-
-        return `${min}分 ${s}秒`;
-    }
 }

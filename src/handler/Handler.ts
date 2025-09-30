@@ -1,95 +1,102 @@
+import ProcessUtil from "../utils/ProcessUtil";
 
-import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
-import FileUtil from '../utils/FileUtil';
-import GitLogUtil from '../utils/GitLogUtil';
 
-export const BUILD_HISTROY_LIMIT = 20;
-export type BuildInfo = { logs: { name: string; title: string; }[], time: number }
-export type CustomData = (string | { key: string; value: string; });
+export type Block = (string | { key: string; value: string; });
+export type Markdown = string;
+export type Button = { label: string, url: string };
+export type Note = string;
 
-type StartBuildMark = { version?: string, timestamp?: number }
+export type Content = (
+    { type: 'blocks', data: Block[] }
+    | { type: 'markdown', data: Markdown }
+    | { type: 'button', data: Button }
+    | { type: 'note', data: Note }
+)[];
 
 export default abstract class Handler {
 
-    private readonly configFilePath: string;
 
     constructor(
         protected readonly robotKey: string,
-        protected readonly taskName: string,
-        protected readonly projectDir: string,
-        protected readonly data?: string
     ) {
-        const hash = crypto.createHash('md5');
-        hash.update(projectDir, 'utf8');
-        const hex = hash.digest('hex');
-        console.log(`Project Hex: ${hex}`);
-
-        this.configFilePath = path.join(__dirname, '..', '..', '.__build_start_mark', `${hex}.json`);
-        FileUtil.mkdir(path.dirname(this.configFilePath))
 
     }
 
+    protected getTitle(): string {
+        const title = ProcessUtil.getArg('--title', value => value && !value.startsWith('--'));
+        return title;
+    }
 
-    private async markBuildStart(): Promise<void> {
-        let config: StartBuildMark;
-        if (fs.existsSync(this.configFilePath)) {
-            const configString = fs.readFileSync(this.configFilePath).toString();
-            config = JSON.parse(configString);
-            console.log(`Read Cache Git Version: ${config.version} From ${this.configFilePath}`);
 
-        } else {
-            config = {};
-            config.version = await GitLogUtil.readGitVersion(this.projectDir);
-            console.log(`Get Git Version: ${config.version}`);
+    protected getColor(): string {
+        const color = ProcessUtil.getArg('--color', value => value && !value.startsWith('--'));
+        return color;
+    }
+
+
+    protected getContent(): Content {
+
+        const content: Content = [];
+
+        for (let i = 0, length = process.argv.length; i < length; i++) {
+            const key = process.argv[i];
+            switch (key) {
+                case '--md':
+                    {
+                        const data = process.argv[i + 1];
+                        content.push({ type: 'markdown', data });
+                        i++;//skip data item
+                    }
+                    break;
+                case '--blocks':
+                    {
+                        const data = process.argv[i + 1];
+                        const blockArgs = data.split(';');
+                        if (!blockArgs) break;
+                        const blocks: Block[] = [];
+                        blockArgs.forEach(item => {
+                            if (!item || !item.length) return;
+                            item = item.replace('==', '|||||');
+                            const data = item.split('=').map(value => value.replace('|||||', '='));
+                            if (data.length === 1) {
+                                blocks.push(data[0]);
+                            }
+                            else if (data.length === 2) {
+                                blocks.push({ key: data[0], value: data[1] });
+                            }
+                        });
+                        content.push({ type: 'blocks', data: blocks });
+                        i++;//skip data item
+                    }
+                    break;
+                case '--button':
+                    {
+                        const data = process.argv[i + 1];
+                        const blockArgs = data.split(';');
+                        if (blockArgs.length === 2) {
+                            const button: Button = { label: blockArgs[0], url: blockArgs[1] };
+                            content.push({ type: 'button', data: button });
+                            i++;//skip data item
+                        }
+                    }
+                    break;
+                case '--note':
+                    {
+                        const data = process.argv[i + 1];
+                        content.push({ type: 'note', data });
+                        i++;//skip data item
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
-
-        config.timestamp = Date.now();
-        fs.writeFileSync(this.configFilePath, JSON.stringify(config));
+        return content;
     }
 
-    private async getBuildInfo(): Promise<BuildInfo> {
-        // 读取工程构建前记录的提交版本
-        if (!fs.existsSync(this.configFilePath)) {
-            console.log(`Config File Not Exist`);
-            return null;
-        }
-        const configString = fs.readFileSync(this.configFilePath).toString();
-        const config: StartBuildMark = JSON.parse(configString);
-        FileUtil.rm(this.configFilePath);
-
-        const logs = config.version ? await GitLogUtil.readGitLog(this.projectDir, config.version) : [];
-        const time = config.timestamp ? (Date.now() - config.timestamp) : 0;
-        return { logs, time };
+    public async exce(): Promise<void> {
+        await this.onExce();
     }
 
-    protected getCustomData(): CustomData[] {
-        const customData: CustomData[] = [];
-        if (!this.data) return customData;
-        const customDataArray = this.data.split(';');
-        if (!customDataArray) return customData;
-        customDataArray.forEach(item => {
-            if (!item || !item.length) return;
-            item = item.replace('==', '|||||');
-            const data = item.split('=').map(value => value.replace('|||||', '='));
-            if (data.length === 1)
-                customData.push(data[0]);
-            else if (data.length === 2)
-                customData.push({ key: data[0], value: data[1] });
-        });
-        return customData;
-    }
-
-    public async begin(): Promise<void> {
-        await this.markBuildStart();
-        await this.onExceBegin();
-    }
-    public async end(): Promise<void> {
-        const buildInfo = await this.getBuildInfo();
-        await this.onExceEnd(buildInfo);
-    }
-
-    public abstract onExceBegin(): Promise<void>;
-    public abstract onExceEnd(buildInfo: BuildInfo): Promise<void>;
+    protected abstract onExce(): Promise<void>;
 }
